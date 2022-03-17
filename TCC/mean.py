@@ -4,4 +4,5 @@ class Tree():
         self.dataset = dataset
         return
 
-class
+class Attempt():
+    pass
