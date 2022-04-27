@@ -1,12 +1,26 @@
 digraph ClusteringTree {
-n_0 [label="0 <= 2.404
+n_0 [label="0 <= -5.337
 samples=\100"];
-n_1 [label="1
-samples=\50
+n_1 [label="1 <= -4.465
+samples=\50"];
+n_2 [label="1 <= -4.041
+samples=\50"];
+n_3 [label="0
+samples=\25
 mistakes=\0"];
-n_2 [label="0
-samples=\50
+n_4 [label="2
+samples=\25
+mistakes=\0"];
+n_5 [label="3
+samples=\25
+mistakes=\0"];
+n_6 [label="1
+samples=\25
 mistakes=\0"];
 n_0 -> n_1;
 n_0 -> n_2;
+n_1 -> n_3;
+n_1 -> n_4;
+n_2 -> n_5;
+n_2 -> n_6;
 }

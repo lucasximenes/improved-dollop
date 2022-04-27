@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import List
 import numpy as np
 import numpy.typing
 from sklearn.datasets import make_blobs
@@ -27,27 +28,30 @@ class Mean_Split:
         self.data = data
         self.n_dims = dims
         self.n_clusters = n_clusters
-        self.splits = []
+        self.splits : List[Split] = []
         self.splits_arrays = []
 
     # create function that calculates the sum of the euclidian distance of a point from all points in a vector
     def sum_of_distances(self, point, points):
         return np.sum(np.linalg.norm(point - points, axis=1))
 
+    # create function that calculates the sum of the square of the euclidian distance of a point from all points in a vector
+    def sum_of_squared_distances(self, point, points):
+        return np.sum(np.square(point - points))
+
     def find_all_splits(self):
         split_obj, best_sorted_data = self.find_optimal_split(self.data)
-        self.splits.append({"Split point": split_obj.split_point, "Cost": split_obj.cost, \
-                "Dimension of the split": split_obj.dim_split, "Means": split_obj.means})
+        self.splits.append(split_obj)
         left_array, right_array = self.split_array(best_sorted_data, split_obj.split_point, split_obj.dim_split)
         self.splits_arrays.append(left_array)
         self.splits_arrays.append(right_array)
-        for i in range(1, self.n_clusters - 1):
+        for j in range(1, self.n_clusters - 1):
             best_cost = np.inf
             best_sorted_data = None
             best_split = None
             best_split_index = 0
             for i, split in enumerate(self.splits_arrays):
-                split_obj, sorted_data = self.find_optimal_split(split)
+                split_obj, sorted_data = self.find_optimal_split(split, self.splits[j-1].cost)
                 if split_obj.cost < best_cost:
                     best_cost = split_obj.cost
                     best_sorted_data = sorted_data
@@ -57,14 +61,13 @@ class Mean_Split:
             left_array, right_array = self.split_array(best_sorted_data, best_split.split_point, best_split.dim_split)
             self.splits_arrays.append(left_array)
             self.splits_arrays.append(right_array)
-            self.splits.append({"Split point": best_split.split_point, "Cost": best_split.cost, \
-                "Dimension of the split": best_split.dim_split, "Means": best_split.means})
+            self.splits.append(best_split)
         print(self.splits)
 
-    def find_optimal_split(self, data: numpy.typing.ArrayLike):
+    def find_optimal_split(self, data: numpy.typing.ArrayLike, initial_cost: float = 1e10):
         n_dims = data.shape[1]
         size = np.size(data, 0) - 1
-        best_cost = np.inf
+        best_cost = 0.0
         split_point = [0, 0]
         dim_split = 0
         best_means = [0, 0]
@@ -73,9 +76,9 @@ class Mean_Split:
         for dim in range(n_dims):
             sorted_data = data[data[:, dim].argsort()]
             current_means = [sorted_data[0], np.mean(sorted_data[1:], axis=0)]
-            aux = self.sum_of_distances(current_means[1], sorted_data[1:])
-            if best_cost > aux:
-                best_cost = aux
+            aux = self.sum_of_squared_distances(current_means[1], sorted_data[1:])
+            if best_cost < abs(aux - initial_cost):
+                best_cost = abs(aux - initial_cost)
                 split_point = sorted_data[0]
                 dim_split = dim
                 best_means = current_means
@@ -84,9 +87,9 @@ class Mean_Split:
             for i in range(1, size):
                 current_means[0] = ((i*current_means[0]) + sorted_data[i])/(i+1)
                 current_means[1] = (((size - i + 1) * current_means[1]) - sorted_data[i])/(size - i)
-                current_cost = self.sum_of_distances(current_means[0], sorted_data[0:i+1]) + self.sum_of_distances(current_means[1], sorted_data[i+1:])
+                current_cost = abs(self.sum_of_squared_distances(current_means[0], sorted_data[0:i+1]) + self.sum_of_squared_distances(current_means[1], sorted_data[i+1:]) - initial_cost)
                 #print(f"Split n: {i}, current cost = {current_cost}, current means = {current_means}")
-                if current_cost < best_cost:
+                if current_cost > best_cost:
                     best_cost = current_cost
                     split_point = sorted_data[i]
                     dim_split = dim
@@ -115,21 +118,22 @@ class Mean_Split:
         consolidated_data = np.concatenate(self.splits_arrays, axis=0)
         plt.scatter(consolidated_data[:, 0], consolidated_data[:, 1], s=10, color='black')
         for i in range(len(self.splits)):
-            plt.scatter(self.splits[i]["Split point"][0], self.splits[i]["Split point"][1], s=50, color=colors_tuple_list[i])
-            if self.splits[i]["Dimension of the split"] == 0:
+            # plt.scatter(self.splits_arrays[i][:, 0], self.splits_arrays[i][:, 1], s=10, color=colors_tuple_list[i])
+            plt.scatter(self.splits[i].split_point[0], self.splits[i].split_point[1], s=50, color=colors_tuple_list[i])
+            if self.splits[i].dim_split == 0:
                 # plot vertical line crossing split point
-                plt.axvline(x=self.splits[i]["Split point"][0], color=colors_tuple_list[i], linestyle='-')
+                plt.axvline(x=self.splits[i].split_point[0], color=colors_tuple_list[i], linestyle='-')
             else:
                 # plot horizontal line crossing split point
-                plt.axhline(y=self.splits[i]["Split point"][1], color=colors_tuple_list[i], linestyle='-')
-            plt.scatter(self.splits[i]["Means"][0][0], self.splits[i]["Means"][0][1], s=50, color=colors_tuple_list[i])
-            plt.scatter(self.splits[i]["Means"][1][0], self.splits[i]["Means"][1][1], s=50, color=colors_tuple_list[i])
+                plt.axhline(y=self.splits[i].split_point[1], color=colors_tuple_list[i], linestyle='-')
+            plt.scatter(self.splits[i].means[0][0], self.splits[i].means[0][1], s=50, color=colors_tuple_list[i])
+            plt.scatter(self.splits[i].means[1][0], self.splits[i].means[1][1], s=50, color=colors_tuple_list[i])
         plt.show()
 
 # function that creates test datasets for optimal split and plots them with the optimal split
 def create_optimal_split_data():
     data_list = []
-    data = make_blobs(n_samples=100, n_features=2, centers=3, cluster_std=1.0, random_state=0)[0]
+    data = make_blobs(n_samples=100, n_features=2, centers=2, cluster_std=1.0, random_state=0)[0]
     data_vertical = make_blobs(n_samples=100, n_features=2, centers=[[0, 10], [0, -10]], cluster_std=1.0, random_state=0)[0]
     data_horizontal = make_blobs(n_samples=100, n_features=2, centers=[[-10, 0], [10, 0]], cluster_std=1.0, random_state=0)[0]
     data_list.append(data)
