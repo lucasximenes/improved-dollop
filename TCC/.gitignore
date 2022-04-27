@@ -1,1 +1,2 @@
-imgs/
+#ignore imgs folder
+*/imgs/*
