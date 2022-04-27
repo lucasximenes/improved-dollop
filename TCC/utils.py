@@ -35,6 +35,9 @@ class Mean_Split:
     def sum_of_distances(self, point, points):
         return np.sum(np.linalg.norm(point - points, axis=1))
 
+    def sum_of_squared_distances(self, point, points):
+        return np.sum(np.square(point - points))
+
     def find_all_splits(self):
         split_obj, best_sorted_data = self.find_optimal_split(self.data)
         self.splits.append(split_obj)
